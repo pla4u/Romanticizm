@@ -1,0 +1,38 @@
+name: Build Romanticizm
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build -A x64
+
+      - name: Build
+        run: cmake --build build --config Release --target Romanticizm_VST3 --parallel
+
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist/Romanticizm | Out-Null
+          Copy-Item -Recurse -Force "build/Romanticizm_artefacts/Release/VST3/Romanticizm.vst3" "dist/Romanticizm/Romanticizm.vst3"
+          Copy-Item -Force "installer/install_windows.bat" "dist/Romanticizm/install_windows.bat"
+          Copy-Item -Force "README.md" "dist/Romanticizm/README.md"
+
+      - name: Build installer (Inno Setup)
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer\romanticizm.iss
+          Copy-Item -Force "dist/Romanticizm-Setup.exe" "dist/Romanticizm/Romanticizm-Setup.exe"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Romanticizm-windows-vst3
+          path: dist/Romanticizm
